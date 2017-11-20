@@ -1,8 +1,8 @@
 ---
 galaxy_info:
   author: Matthew Montgomery
-  description: 
-  company: 
+  description:
+  company:
   license: MIT
   min_ansible_version: 1.2
   platforms:

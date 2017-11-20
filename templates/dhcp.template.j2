@@ -32,7 +32,7 @@ subnet {{ item.cobbler_dhcp_subnet }} netmask {{ item.cobbler_dhcp_netmask }} {
     range dynamic-bootp        {{ item.cobbler_dhcp_dynamic_bootp_start }} {{ item.cobbler_dhcp_dynamic_bootp_end }};
     default-lease-time         21600;
     max-lease-time             43200;
-    next-server                $next_server;
+    next-server                {{ item.cobbler_dhcp_option_routers }};
     {% if item.cobbler_dhcp_static_routes is defined %}
     # defines the type of data used to send the routing informations
     option classless-routes {% for static_route in item.cobbler_dhcp_static_routes %} {{ static_route }} {% if loop.last %};{% else %},

@@ -240,7 +240,7 @@
     cobbler system add
     --clobber
     --name={{ item.name | quote }}
-    --hostname={{ item.hostname | quote }}
+    --hostname={{ item.hostname | default(item.name) | quote }}
     --profile={{ item.profile | quote }}
     --ip-address={{ item.ip | quote }}
     --subnet={{ item.netmask | quote }}
@@ -248,14 +248,14 @@
     --mac={{ item.mac | quote }}
     --interface={{ item.interface | quote }}
     {% if item.netboot is defined %}--netboot-enabled={{ item.netboot | quote }}{% endif %}
-    {% if item.dns_name is defined %}--dns_name={{ item.dns_name | quote }}{% endif %}
+    {% if item.dns_name is defined %}--dns-name={{ item.dns_name | quote }}{% endif %}
     {% if item.static is defined %}--static={{ item.static }}{% endif %}
     {% if item.kopts is defined %}--kopts={{ item.kopts | quote }}{% endif %}
     {% if item.kopts_post is defined %}--kopts-post={{ item.kopts_post | quote }}{% endif %}
     {% if item.ksmeta is defined %}--ksmeta={{ item.ksmeta | quote }}{% endif %}
     {% if item.dhcptag is defined %}--dhcp-tag={{ item.dhcptag | quote }}{% endif %}
     {% if item.next_server is defined %}--server={{ item.next_server | quote }}{% endif %}
-    {% if item.mgmt_classes is defined %}--mgmt-classes={{ item.mgmt_classes }}{% endif %}
+    {% if item.mgmt_classes is defined %}--mgmt-classes={{ item.mgmt_classes | quote }}{% endif %}
   when: systems is defined
   with_items:
     - "{{ systems }}"
