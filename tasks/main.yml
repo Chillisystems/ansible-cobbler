@@ -16,7 +16,7 @@
 - name: Include OS required variables
   include_vars: '{{ ansible_os_family | lower }}.yml'
 
-- include: firewall.yml
+- import_tasks: firewall.yml
 
 # -------
 # Cobbler
@@ -164,7 +164,7 @@
     && umount {{ item.path | quote }})
   with_items:
     - "{{ distros }}"
-  when: distros is defined and distro_result|failed
+  when: distros is defined and distro_result is failed
   notify:
     - restart cobbler
     - wait for cobbler

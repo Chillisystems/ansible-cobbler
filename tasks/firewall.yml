@@ -9,25 +9,27 @@
   register: firewalld
   changed_when: false
   ignore_errors: true
+  check_mode: false
 
 - name: check if firewalld service is running
   become: yes
   command: firewall-cmd --state
   register: firewalld_svc
   ignore_errors: true
-  when: firewalld|success
+  check_mode: false
+  when: firewalld is success
 
 - name: enable cobbler tftpd through firewalld
   become: yes
   firewalld: service=tftp permanent=true state=enabled
   notify: restart firewalld
-  when: firewalld|success and firewalld_svc.stdout=='running'
+  when: firewalld is success and firewalld_svc.stdout == 'running'
 
 - name: enable cobbler httpd through firewalld
   become: yes
   firewalld: service=http permanent=true state=enabled
   notify: restart firewalld
-  when: firewalld|success and firewalld_svc.stdout=='running'
+  when: firewalld is success and firewalld_svc.stdout == 'running'
 
 # ---
 # ufw
@@ -42,9 +44,9 @@
 - name: allow tftp through ufw
   become: yes
   ufw: rule=allow port=69 proto=tcp
-  when: ufw|success
+  when: ufw is success
 
 - name: allow http through ufw
   become: yes
   ufw: rule=allow port=80 proto=tcp
-  when: ufw|success
+  when: ufw is success
