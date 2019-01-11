@@ -1,0 +1,100 @@
+#!/bin/sh
+#
+# cobblerd    Cobbler helper daemon
+###################################
+
+### BEGIN INIT INFO
+# Provides: cobblerd
+# Required-Start: $network $remote_fs
+# Required-Stop: $remote_fs
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Cobbler daemon
+# Description: This is a daemon that a provides remote cobbler API
+#              and status tracking
+### END INIT INFO
+
+# Sanity checks.
+[ -x {{ cobbler_install_dir}}/venv/bin/cobblerd ] || exit 0
+
+# Source function library.
+. /lib/lsb/init-functions
+
+SERVICE=cobblerd
+PROCESS=cobblerd
+CONFIG_ARGS=" "
+LOCKFILE=/var/lock/$SERVICE
+WSGI=/usr/share/cobbler/web/cobbler.wsgi
+
+RETVAL=0
+
+start() {
+    echo -n "Starting cobbler daemon: "
+    if [ -f $LOCKFILE ]; then
+        echo -n "already started, lock file found"
+        RETVAL=1
+    elif {{ cobbler_install_dir }}/venv/bin/python {{ cobbler_install_dir}}/venv/bin/cobblerd; then
+        echo -n "OK"
+        RETVAL=0
+    fi
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch $LOCKFILE
+    [ -f $WSGI ] && touch $WSGI
+    return $RETVAL
+}
+
+stop() {
+    echo -n "Stopping cobbler daemon: "
+    # Added this since Debian's start-stop-daemon doesn't support spawned processes, will remove
+    # when cobblerd supports stopping or PID files.
+    if ps -ef | grep "{{ cobbler_install_dir }}/venv/bin/python {{ cobbler_install_dir}}/venv/bin/cobblerd" | grep -v grep | awk '{print $2}' | xargs kill &> /dev/null; then
+        echo -n "OK"
+        RETVAL=0
+    else
+        echo -n "Daemon is not started"
+        RETVAL=1
+    fi
+    RETVAL=$?
+    echo
+    if [ $RETVAL -eq 0 ]; then
+    rm -f $LOCKFILE
+        rm -f /var/run/$SERVICE.pid
+    fi
+}
+
+restart() {
+    stop
+    start
+}
+
+# See how we were called.
+case "$1" in
+    start|stop|restart)
+        $1
+        ;;
+    status)
+        if [ -f $LOCKFILE ]; then
+            RETVAL=0
+            echo "cobblerd is running."
+        else
+            RETVAL=1
+            echo "cobblerd is stopped."
+        fi
+        ;;
+    condrestart)
+        [ -f $LOCKFILE ] && restart || :
+        ;;
+    reload)
+        echo "can't reload configuration, you have to restart it"
+        RETVAL=$?
+        ;;
+    force-reload)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|restart|condrestart|reload}"
+        exit 1
+        ;;
+esac
+exit $RETVAL

@@ -2,3 +2,7 @@
 
 apache_service_name: httpd
 daemon: cobblerd
+
+cobbler_system_dependiences:
+  - xinetd
+  - dhcp

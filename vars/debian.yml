@@ -2,3 +2,32 @@
 
 apache_service_name: apache2
 daemon: cobblerd
+
+cobbler_system_dependiences:
+  - createrepo
+  - apache2
+  - genisoimage
+  - libapache2-mod-wsgi
+  - libapache2-mod-python
+  - libapache2-mod-proxy-uwsgi
+  - libcurl4-openssl-dev
+  - libssl-dev
+  - rsync
+  - syslinux
+  - yum-utils
+
+  - python-cheetah
+  - python-netaddr
+  - python-simplejson
+  - python-urlgrabber
+  - python-yaml
+  - python-django
+  - python-pycurl
+
+  - python-pip
+  - python-virtualenv
+  - xinetd
+  - isc-dhcp-server
+  - debmirror
+  - fence-agents
+  - tftpd-hpa

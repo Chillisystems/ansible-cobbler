@@ -7,59 +7,108 @@
 # -------------
 
 - name: unsupported package manager
-  fail: msg='this playbook requries RedHat or Debian based system'
+  fail:
+    msg: this playbook requries RedHat or Debian based system
   when: ansible_os_family|lower != 'redhat' and ansible_os_family|lower != 'debian'
-
-- name: Include OS specific tasks
-  include: '{{ ansible_os_family | lower }}.yml'
 
 - name: Include OS required variables
   include_vars: '{{ ansible_os_family | lower }}.yml'
+
+- name: Include OS specific tasks
+  include: '{{ ansible_os_family | lower }}.yml'
 
 - import_tasks: firewall.yml
 
 # -------
 # Cobbler
 # -------
-- name: install cobbler (yum)
-  yum: name=cobbler state=present
-  when: ansible_pkg_mgr == 'yum'
+- name: create required directories
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    recurse: yes
+    state: directory
+  with_items:
+    - path: /var/lib/cobbler/webui_sessions
+      owner: www-data
+      group: www-data
+    - path: /etc/cobbler
+    - path: /var/log/cobbler
 
-- name: install cobbler (apt)
-  apt: name=cobbler={{ cobbler_version }} state=present
-  when: ansible_pkg_mgr == 'apt'
+- name: install cobbler from pip
+  pip:
+    name: "{{ item }}"
+#    version: v2.8.4
+    state: present
+
+    virtualenv_command: virtualenv
+    virtualenv: "{{ cobbler_install_dir }}/venv"
+  with_items:
+    - Cheetah
+    - netaddr
+    - simplejson
+    - urlgrabber
+    - PyYAML
+    - django
+    - pycurl
+    - "git+https://github.com/cobbler/cobbler.git@v2.8.4#egg=cobbler"
+
+- name: Copy files from site-packages to right places
+  command: cp -pvr {{ item.src }} {{ item.dest }}
+  with_items:
+    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/cobbler"
+      dest: /etc/
+    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/srv/www"
+      dest: /srv/
+    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/var/lib/cobbler"
+      dest: /var/lib/
+#    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/share/cobbler"
+#      dest: /usr/share/cobbler
 
 - name: enable required apache modules
-  apache2_module: state=present name={{ item }}
+  apache2_module:
+    state: present
+    name: "{{ item }}"
   with_items:
     - proxy
     - proxy_http
     - status
-  when: apache_service_name == 'apache2'
-
-- name: copy cobbler config files
-  copy: src=cobbler.conf
-        dest=/etc/apache2/conf-enabled/cobbler.conf
-        mode=0644
-  when: apache_service_name == 'apache2'
-
-- name: copy cobbler_web config files
-  copy: src=cobbler_web.conf
-        dest=/etc/apache2/conf-enabled/cobbler_web.conf
-        mode=0644
+    - rewrite
   notify:
     - restart apache
-  when: apache_service_name == 'apache2'
+
+- name: copy cobbler config files
+  copy:
+    src: cobbler.conf
+    dest: "/etc/{{ apache_service_name }}/conf-enabled/cobbler.conf"
+    mode: 0644
+  notify:
+    - restart apache
+
+- name: copy cobbler_web config files
+  copy:
+    src: cobbler_web.conf
+    dest: "/etc/{{ apache_service_name }}/conf-enabled/cobbler_web.conf"
+    mode: 0644
+  notify:
+    - restart apache
 
 - name: configure xinetd rsync
-  copy: src=rsync
-        dest=/etc/xinetd.d/
-        owner=root group=root mode=0644
+  copy:
+    src: rsync
+    dest: /etc/xinetd.d/
+    owner: root
+    group: root
+    mode: 0644
   notify:
     - restart xinetd
 
 - name: start and enable xinetd
-  service: name={{ item }} state=started enabled=true
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
   with_items:
     - xinetd
     - "{{ apache_service_name }}"
@@ -67,17 +116,27 @@
 - meta: flush_handlers
 
 - name: configure cobbler
-  template: src=settings.j2 dest=/etc/cobbler/settings
+  template:
+    src: settings.j2
+    dest: /etc/cobbler/settings
   notify:
     - restart cobbler
     - wait for cobbler
     - sync cobbler
 
 - name: start and enable cobbler
-  service: name={{ daemon }} state=started enabled=true
+  service:
+    name: "{{ daemon }}"
+    state: started
+    enabled: true
 
 - name: wait for cobbler
-  wait_for: host=127.0.0.1 port=25151 delay=5 timeout=30 state=started
+  wait_for:
+    host: 127.0.0.1
+    port: 25151
+    delay: 5
+    timeout: 30
+    state: started
 
 - name: get cobbler loaders
   command: cobbler get-loaders
@@ -98,7 +157,9 @@
     - sync cobbler
 
 - name: configure cobbler dhcp
-  template: src=dhcp.template.j2 dest=/etc/cobbler/dhcp.template
+  template:
+    src: dhcp.template.j2
+    dest: /etc/cobbler/dhcp.template
   notify:
     - restart cobbler
     - wait for cobbler
@@ -108,8 +169,10 @@
 # Cobbler Kickstarts
 # ---------------------
 
-- name: adding defualt ubuntu preseed
-  template: src=ubuntu-server.preseed.j2 dest=/etc/cobbler/ubuntu-server.preseed
+- name: adding default ubuntu preseed
+  template:
+    src: ubuntu-server.preseed.j2
+    dest: /etc/cobbler/ubuntu-server.preseed
 
 - name: copy user defined kickstart files
   copy:
@@ -135,11 +198,15 @@
   when: distros is defined
 
 - name: create iso directory to hold distro images
-  file: path=~/iso state=directory
+  file:
+    path: ~/iso
+    state: directory
 
 # Download each defined distro ISO if it doesn't already exist
 - name: download distro iso files
-  get_url: url={{ item.url }} dest={{ item.file }}
+  get_url:
+    url: "{{ item.url }}"
+    dest: "{{ item.file }}"
   with_items:
     - "{{ distros }}"
   when: distros is defined
@@ -154,7 +221,8 @@
   with_items:
     - "{{ distros }}"
 
-- debug: msg="Distro watch {{ distro_result }}"
+- debug:
+    msg: "Distro watch {{ distro_result }}"
 
 - name: add distro/profile pairs to cobbler
   shell: >

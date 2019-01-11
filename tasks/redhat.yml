@@ -5,9 +5,12 @@
 
 # yum
 - name: configure epel repo (yum)
-  template: src=epel.repo.j2
-        dest=/etc/yum.repos.d/epel.repo
-        owner=root group=root mode=0644
+  template:
+    src: epel.repo.j2
+    dest: /etc/yum.repos.d/epel.repo
+    owner: root
+    group: root
+    mode: 0644
 
 # ------------
 # Dependencies
@@ -15,22 +18,33 @@
 
 # yum
 - name: install dependencies (yum)
-  yum: name={{ item }} state=present
-  with_items:
-    - xinetd
-    - dhcp
+  package:
+    name: "{{ cobbler_system_dependiences }}"
+    state: present
 
 # -------
 # selinux
 # -------
 - name: set selinux to permissive (yum)
-  selinux: policy=targeted state=permissive
+  selinux:
+    policy: targeted
+    state: permissive
 
 # -----
 # dhcpd
 # -----
 - name: configure dhcpd (yum)
-  template: src=dhcpd.j2 dest=/etc/sysconfig/dhcpd
+  template:
+    src: dhcpd.j2
+    dest: /etc/sysconfig/dhcpd
 
 - name: enable dhcpd (yum)
-  service: name=dhcpd state=stopped enabled=true
+  service:
+    name: dhcpd
+    state: stopped
+    enabled: true
+
+- name: install cobbler (yum)
+  package:
+    name: cobbler
+    state: present
