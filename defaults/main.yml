@@ -6,6 +6,8 @@
 # but should be set to something more secure.
 
 cobbler_install_dir: /opt/cobbler
+cobbler_bin: "{{ cobbler_install_dir }}/bin/cobbler"
+
 cobbler_version: v2.8.4
 
 cobbler_default_password_crypted: $1$0j9R7J3U$qhH8N9oXlytT.pEjjSud60
@@ -43,8 +45,8 @@ distros: []
 #      name: ubuntu-14.04-mini,
 #      arch: x86_64,
 #      url: 'http://archive.ubuntu.com/ubuntu/dists/trusty/main/installer-amd64/current/images/netboot/mini.iso',
-#      file: /root/iso/ubuntu-14.04-mini.iso,
-#      path: /root/iso/ubuntu-14.04-mini/,
+#      file: /srv/cobbler/iso/ubuntu-14.04-mini.iso,
+#      path: /srv/cobbler/iso/ubuntu-14.04-mini/,
 #      kickstart: /var/lib/cobbler/kickstarts/ubuntu-server.preseed
 #    }
 

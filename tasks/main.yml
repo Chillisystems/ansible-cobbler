@@ -19,9 +19,9 @@
 
 - import_tasks: firewall.yml
 
-# -------
-# Cobbler
-# -------
+# ---------------------
+# Cobbler Install
+# ---------------------
 - name: create required directories
   file:
     path: "{{ item.path }}"
@@ -43,7 +43,7 @@
     state: present
 
     virtualenv_command: virtualenv
-    virtualenv: "{{ cobbler_install_dir }}/venv"
+    virtualenv: "{{ cobbler_install_dir }}"
   with_items:
     - Cheetah
     - netaddr
@@ -52,18 +52,18 @@
     - PyYAML
     - django
     - pycurl
-    - "git+https://github.com/cobbler/cobbler.git@v2.8.4#egg=cobbler"
+    - "git+https://github.com/cobbler/cobbler.git@{{ cobbler_version }}#egg=cobbler"
 
-- name: Copy files from site-packages to right places
-  command: cp -pvr {{ item.src }} {{ item.dest }}
-  with_items:
-    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/cobbler"
-      dest: /etc/
-    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/srv/www"
-      dest: /srv/
-    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/var/lib/cobbler"
-      dest: /var/lib/
-#    - src: "{{ cobbler_install_dir }}/venv/lib/python2.7/site-packages/share/cobbler"
+#- name: Copy files from site-packages to right places
+#  command: rsync -avc --exclude {{ item.src }} {{ item.dest }}
+#  with_items:
+#    - src: "{{ cobbler_install_dir }}/lib/python2.7/site-packages/etc/cobbler"
+#      dest: /etc/
+#    - src: "{{ cobbler_install_dir }}/lib/python2.7/site-packages/srv/www"
+#      dest: /srv/
+#    - src: "{{ cobbler_install_dir }}/lib/python2.7/site-packages/var/lib/cobbler"
+#      dest: /var/lib/
+#    - src: "{{ cobbler_install_dir }}/lib/python2.7/site-packages/share/cobbler"
 #      dest: /usr/share/cobbler
 
 - name: enable required apache modules
@@ -78,33 +78,79 @@
   notify:
     - restart apache
 
-- name: copy cobbler config files
-  copy:
-    src: cobbler.conf
-    dest: "/etc/{{ apache_service_name }}/conf-enabled/cobbler.conf"
-    mode: 0644
-  notify:
-    - restart apache
+- name: Copy cobbler installation files
+  synchronize:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src: files/etc/cobbler
+      dest: /etc/
+    - src: files/srv/www
+      dest: /srv/
+    - src: files/var/lib/cobbler
+      dest: /var/lib/
+    - src: files/sbin/
+      dest: /usr/local/sbin
+    - src: files/usr/share/cobbler
+      dest: /usr/share/
 
-- name: copy cobbler_web config files
-  copy:
-    src: cobbler_web.conf
-    dest: "/etc/{{ apache_service_name }}/conf-enabled/cobbler_web.conf"
-    mode: 0644
-  notify:
-    - restart apache
+- name: Create required directories
+  file:
+    path: "{{ item }}"
+    recurse: yes
+    state: directory
+  with_items:
+    - /var/log/cobbler/tasks
+    - /var/lib/cobbler/loaders
+    - /srv/cobbler/iso
 
-- name: configure xinetd rsync
-  copy:
-    src: rsync
-    dest: /etc/xinetd.d/
-    owner: root
-    group: root
-    mode: 0644
+- name: copy cobbler apache config files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode | default(omit) }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+  with_items:
+    - src: cobbler.conf.j2
+      dest: "/etc/{{ apache_service_name }}/conf-enabled/cobbler.conf"
+      mode: 0644
+    - src: cobbler_web.conf.j2
+      dest: "/etc/{{ apache_service_name }}/conf-enabled/cobbler_web.conf"
+      mode: 0644
+    - src: rsync.j2
+      dest: /etc/xinetd.d/rsync
+      owner: root
+      group: root
+      mode: 0644
+    - src:  cobblerd.service.j2
+      dest: /etc/systemd/system/cobblerd.service
+      mode: 0644
   notify:
+    - reload systemd
+    - restart apache
     - restart xinetd
 
-- name: start and enable xinetd
+- meta: flush_handlers
+
+- name: configure cobbler
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode | default(omit) }}"
+  with_items:
+    - src: settings.j2
+      dest: /etc/cobbler/settings
+    - src: dhcp.template.j2
+      dest: /etc/cobbler/dhcp.template
+  notify:
+    - restart cobbler
+    - wait for cobbler
+    - sync cobbler
+
+- meta: flush_handlers
+
+- name: start and enable xinetd, apache2, cobbler
   service:
     name: "{{ item }}"
     state: started
@@ -112,23 +158,7 @@
   with_items:
     - xinetd
     - "{{ apache_service_name }}"
-
-- meta: flush_handlers
-
-- name: configure cobbler
-  template:
-    src: settings.j2
-    dest: /etc/cobbler/settings
-  notify:
-    - restart cobbler
-    - wait for cobbler
-    - sync cobbler
-
-- name: start and enable cobbler
-  service:
-    name: "{{ daemon }}"
-    state: started
-    enabled: true
+    - "{{ daemon }}"
 
 - name: wait for cobbler
   wait_for:
@@ -138,8 +168,12 @@
     timeout: 30
     state: started
 
+# ---------------------
+# Cobbler Preload data
+# ---------------------
+
 - name: get cobbler loaders
-  command: cobbler get-loaders
+  shell: "{{ cobbler_bin }} get-loaders"
   args:
     creates: /var/lib/cobbler/loaders/README
   when: cobbler_get_loaders
@@ -149,17 +183,8 @@
     - sync cobbler
 
 - name: update cobbler signatures
-  command: cobbler signature update
+  shell: "{{ cobbler_bin }} signature update"
   when: cobbler_signature_update
-  notify:
-    - restart cobbler
-    - wait for cobbler
-    - sync cobbler
-
-- name: configure cobbler dhcp
-  template:
-    src: dhcp.template.j2
-    dest: /etc/cobbler/dhcp.template
   notify:
     - restart cobbler
     - wait for cobbler
@@ -197,11 +222,6 @@
     - "{{ distros }}"
   when: distros is defined
 
-- name: create iso directory to hold distro images
-  file:
-    path: ~/iso
-    state: directory
-
 # Download each defined distro ISO if it doesn't already exist
 - name: download distro iso files
   get_url:
@@ -213,7 +233,7 @@
 
 # Add the each distro/profile pair only if the distro doesn't already exist
 - name: check distro exists in cobbler
-  shell: "cobbler distro report --name={{ item.name | quote }}-{{ item.arch | quote }} > /dev/null"
+  shell: "{{ cobbler_bin }} distro report --name={{ item.name | quote }}-{{ item.arch | quote }} > /dev/null"
   ignore_errors: yes
   changed_when: no
   register: distro_result
@@ -228,7 +248,7 @@
   shell: >
     (mkdir -p {{ item.path | quote }}
     && mount -t iso9660 -o loop,ro {{ item.file | quote }} {{ item.path | quote }}
-    && cobbler import --path={{ item.path | quote }} --name={{ item.name | quote }} --arch={{ item.arch | quote }} {% if item.kickstart is defined %}--kickstart={{ item.kickstart | quote }}{% endif %}
+    && {{ cobbler_bin }} import --path={{ item.path | quote }} --name={{ item.name | quote }} --arch={{ item.arch | quote }} {% if item.kickstart is defined %}--kickstart={{ item.kickstart | quote }}{% endif %}
     && umount {{ item.path | quote }})
   with_items:
     - "{{ distros }}"
@@ -240,13 +260,13 @@
 
 #- name: check distro for import exists in cobbler
 #  with_items: distro_imports
-#  command: cobbler distro report --name="{{ item.name }}"
+#  command: {{ cobbler_bin }} distro report --name="{{ item.name }}"
 #  register: distro_imports_result
 #  ignore_errors: true
 #  when: distro_imports is defined
 
 #- name: import distro to cobbler
-#  shell: cobbler import --name="{{ item.name }}-{{ item.arch }}" --path="{{ item.url }}" --arch="{{ item.arch }}"
+#  shell: {{ cobbler_bin }} import --name="{{ item.name }}-{{ item.arch }}" --path="{{ item.url }}" --arch="{{ item.arch }}"
 #  with_items: distro_imports
 #  when: distro_imports is defined and distro_imports_result|failed
 #  notify:
@@ -260,7 +280,7 @@
 
 - name: add repos to cobbler
   shell: >
-    cobbler repo add
+    {{ cobbler_bin }} repo add
     --clobber
     --name={{ item.name | quote }}
     --mirror={{ item.mirror | quote }}
@@ -280,7 +300,7 @@
 
 - name: add profiles to cobbler
   shell: >
-    cobbler profile add
+    {{ cobbler_bin }} profile add
     --clobber
     --name={{ item.name | quote }}
     --distro={{ item.distro | quote }}
@@ -305,7 +325,7 @@
 
 - name: add systems to cobbler
   shell: >
-    cobbler system add
+    {{ cobbler_bin }} system add
     --clobber
     --name={{ item.name | quote }}
     --hostname={{ item.hostname | default(item.name) | quote }}

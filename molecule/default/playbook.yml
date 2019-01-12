@@ -11,6 +11,8 @@
 - name: Converge
   hosts: all
   become: true
+  vars:
+    bound_interface: enp0s3
   tasks:
     - include_role:
         name: ansible-cobbler

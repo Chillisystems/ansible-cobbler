@@ -30,4 +30,8 @@
     state: started
 
 - name: sync cobbler
-  command: cobbler sync
+  shell:  "{{ cobbler_bin }} sync"
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes

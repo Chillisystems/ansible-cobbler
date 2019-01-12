@@ -3,8 +3,8 @@ Description=Cobbler Helper Daemon
 After=syslog.target network.target
 
 [Service]
-ExecStart=/usr/local/bin/cobblerd -F
-ExecStartPost=-/usr/bin/touch /usr/local/share/cobbler/web/cobbler.wsgi
+ExecStart={{ cobbler_install_dir }}/bin/cobblerd -F
+ExecStartPost=-/usr/bin/touch /usr/share/cobbler/web/cobbler.wsgi
 PrivateTmp=yes
 KillMode=process
 
