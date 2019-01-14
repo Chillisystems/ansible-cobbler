@@ -54,6 +54,7 @@
     - django
     - pycurl
     - "git+https://github.com/cobbler/cobbler.git@{{ cobbler_version }}#egg=cobbler"
+  register: _cobbler_installed
 
 #- name: Copy files from site-packages to right places
 #  command: rsync -avc --exclude {{ item.src }} {{ item.dest }}
@@ -94,6 +95,7 @@
       dest: /usr/local/sbin
     - src: files/usr/share/cobbler
       dest: /usr/share/
+    when: _cobbler_installed is changed
 
 - name: Create required directories
   file:
