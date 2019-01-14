@@ -43,6 +43,7 @@
     state: present
 
     virtualenv_command: virtualenv
+    virtualenv_python: python2.7
     virtualenv: "{{ cobbler_install_dir }}"
   with_items:
     - Cheetah
