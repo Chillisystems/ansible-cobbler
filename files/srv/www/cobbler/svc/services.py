@@ -26,16 +26,20 @@ import os
 import urllib
 import cgi
 
+python_home = '/opt/cobbler'
+
+activate_this = python_home + '/bin/activate_this.py'
+execfile(activate_this, dict(__file__=activate_this))
 
 def application(environ, start_response):
 
-    if 'VIRTUALENV' in environ and environ['VIRTUALENV'] != "":
-        # VIRTUALENV Support
-        # see http://code.google.com/p/modwsgi/wiki/VirtualEnvironments
-        import site
-        import distutils.sysconfig
-        site.addsitedir(distutils.sysconfig.get_python_lib(prefix=environ['VIRTUALENV']))
-        # Now all modules are available even under a virtualenv
+    # if 'VIRTUALENV' in environ and environ['VIRTUALENV'] != "":
+    #     # VIRTUALENV Support
+    #     # see http://code.google.com/p/modwsgi/wiki/VirtualEnvironments
+    #     import site
+    #     import distutils.sysconfig
+    #     site.addsitedir(distutils.sysconfig.get_python_lib(prefix=environ['VIRTUALENV']))
+    #     # Now all modules are available even under a virtualenv
 
     import yaml
     from cobbler.services import CobblerSvc

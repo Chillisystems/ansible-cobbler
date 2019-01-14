@@ -8,9 +8,13 @@ Alias /cobbler /srv/www/cobbler
 Alias /cobbler_webui_content /srv/www/cobbler_webui_content
 
 WSGIScriptAliasMatch ^/cblr/svc/([^/]*) /srv/www/cobbler/svc/services.py
+WSGIDaemonProcess cobbler python-home=/opt/cobbler
+
+WSGIProcessGroup cobbler
+WSGIApplicationGroup %{GLOBAL}
 
 <Directory "/srv/www/cobbler">
-    SetEnv VIRTUALENV 
+    SetEnv VIRTUALENV
     Options Indexes FollowSymLinks
     Order allow,deny
     Allow from all
