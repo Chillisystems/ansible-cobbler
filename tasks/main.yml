@@ -95,7 +95,7 @@
       dest: /usr/local/sbin
     - src: files/usr/share/cobbler
       dest: /usr/share/
-    when: _cobbler_installed is changed
+    when: _cobbler_installed is changed or cobbler_sync_files
 
 - name: Create required directories
   file:

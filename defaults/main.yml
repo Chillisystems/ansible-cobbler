@@ -13,6 +13,7 @@ cobbler_version: v2.8.4
 cobbler_default_password_crypted: $1$0j9R7J3U$qhH8N9oXlytT.pEjjSud60
 bound_interface: eth1
 
+cobbler_sync_files: false
 cobbler_get_loaders: true
 cobbler_signature_update: true
 cobbler_proxy_url_ext:
