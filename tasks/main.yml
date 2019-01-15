@@ -264,8 +264,8 @@
 - name: edit distro repos if needed
   shell: >
     {{ cobbler_bin }} repo edit --name="{{ item.name}}-{{ item.arch }}"
-    {% if item.repo_settings.apt_components is defined %}--apt_components={{ item.repo_settings.apt_components | quote }}{% endif %}
-    {% if item.repo_settings.apt_dists is defined %}--apt_dists={{ item.repo_settings.apt_dists | quote }}{% endif %}
+    {% if item.repo_settings.apt_components is defined %}--apt-components={{ item.repo_settings.apt_components | quote }}{% endif %}
+    {% if item.repo_settings.apt_dists is defined %}--apt-dists={{ item.repo_settings.apt_dists | quote }}{% endif %}
   with_items:
     - "{{ distros }}"
   when: distros is defined and item.repo_settings is defined

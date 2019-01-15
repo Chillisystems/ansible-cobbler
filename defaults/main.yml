@@ -50,8 +50,8 @@ distros: []
 #      path: /srv/cobbler/iso/ubuntu-14.04-mini/,
 #      kickstart: /var/lib/cobbler/kickstarts/ubuntu-server.preseed
 #      repo_settings:
-#        apt-components: main restricted universe
-#        apt-dists: bionic bionic-updates
+#        apt_components: main restricted universe
+#        apt_dists: bionic bionic-updates
 #    }
 
 # cobbler distro imports
