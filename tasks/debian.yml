@@ -17,9 +17,11 @@
   template:
     src: isc-dhcp-server.j2
     dest: /etc/default/isc-dhcp-server
+  notify:
+    - restart dhcp
 
 - name: enable isc-dhcp-server (apt)
   service:
     name: isc-dhcp-server
-    state: stopped
+    state: started
     enabled: yes
