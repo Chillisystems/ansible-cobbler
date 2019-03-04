@@ -22,6 +22,7 @@ cobbler_system_dependiences:
   - python-yaml
   - python-django
   - python-pycurl
+  - python-six
 
   - python-pip
   - python-virtualenv

@@ -49,6 +49,7 @@
     - Cheetah
     - netaddr
     - simplejson
+    - six
     - urlgrabber
     - PyYAML
     - django
